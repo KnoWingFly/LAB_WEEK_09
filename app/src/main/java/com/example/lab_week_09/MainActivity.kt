@@ -28,6 +28,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.lab_week_09.ui.theme.LAB_WEEK_09Theme
 import com.example.lab_week_09.data.Student
+import com.example.lab_week_09.ui.theme.OnBackgroundTitleText
+import com.example.lab_week_09.ui.theme.PrimaryTextButton
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,6 +89,8 @@ fun HomeContent(
                 modifier = Modifier.padding(16.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
+                OnBackgroundTitleText(text = stringResource(id = R.string.enter_item))
+
                 Text(text = stringResource(id = R.string.enter_item))
                 TextField(
                     value = inputField.name,
@@ -97,11 +101,8 @@ fun HomeContent(
                         onInputValueChange(it)
                     }
                 )
-                Button(onClick = {
+                PrimaryTextButton(text = stringResource(id = R.string.button_click)){
                     onButtonClick()
-                }
-                ){
-                    Text(text = stringResource(id = R.string.button_click))
                 }
             }
         }
@@ -110,7 +111,7 @@ fun HomeContent(
                 modifier = Modifier.padding(vertical = 4.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
-                Text(text = item.name)
+                OnBackgroundTitleText(text = item.name)
             }
         }
     }
