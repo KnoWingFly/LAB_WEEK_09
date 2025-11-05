@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -35,6 +36,10 @@ import com.example.lab_week_09.data.Student
 import com.example.lab_week_09.ui.theme.OnBackgroundItemText
 import com.example.lab_week_09.ui.theme.OnBackgroundTitleText
 import com.example.lab_week_09.ui.theme.PrimaryTextButton
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.squareup.moshi.Types
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ){
-                  val navController = rememberNavController()
+                    val navController = rememberNavController()
                     App(
                         navController = navController
                     )
@@ -68,20 +73,42 @@ fun Home(navigateFromHomeToResult: (String) -> Unit) {
     }
 
     val inputField = remember{ mutableStateOf(Student("")) }
+    val error = remember { mutableStateOf<String?>(null) }
+    val errorEmptyMessage = stringResource(id = R.string.error_empty)
 
     HomeContent(
         listData = listData,
         inputField = inputField.value,
         onInputValueChange = { input ->
             inputField.value = inputField.value.copy(name = input)
+            if (error.value != null) {
+                error.value = null
+            }
         },
         onButtonClick = {
             if (inputField.value.name.isNotBlank()) {
                 listData.add(inputField.value)
                 inputField.value = Student("")
+                error.value = null
+            } else {
+                error.value = errorEmptyMessage
             }
         },
-        navigateFromHomeToResult = { navigateFromHomeToResult(listData.toList().toString())}
+        navigateFromHomeToResult = {
+            val moshi = Moshi.Builder()
+                .add(KotlinJsonAdapterFactory())
+                .build()
+
+            val listType = Types.newParameterizedType(
+                List::class.java,
+                Student::class.java
+            )
+            val adapter: JsonAdapter<List<Student>> = moshi.adapter(listType)
+            val jsonString = adapter.toJson(listData.toList())
+
+            navigateFromHomeToResult(jsonString)
+        },
+        error = error.value
     )
 }
 
@@ -91,7 +118,8 @@ fun HomeContent(
     inputField: Student,
     onInputValueChange: (String) -> Unit,
     onButtonClick: () -> Unit,
-    navigateFromHomeToResult: () -> Unit
+    navigateFromHomeToResult: () -> Unit,
+    error: String?
 ){
     LazyColumn(
         contentPadding = WindowInsets.safeDrawing.asPaddingValues()
@@ -103,7 +131,6 @@ fun HomeContent(
             ){
                 OnBackgroundTitleText(text = stringResource(id = R.string.enter_item))
 
-                Text(text = stringResource(id = R.string.enter_item))
                 TextField(
                     value = inputField.name,
                     keyboardOptions = KeyboardOptions(
@@ -111,6 +138,16 @@ fun HomeContent(
                     ),
                     onValueChange = {
                         onInputValueChange(it)
+                    },
+                    isError = error != null,
+                    supportingText = {
+                        if (error != null) {
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 )
                 PrimaryTextButton(text = stringResource(id = R.string.button_click)){
@@ -134,14 +171,38 @@ fun HomeContent(
 
 @Composable
 fun ResultContent(listData: String){
-    Column(
+    val studentList: List<Student> = remember(listData){
+        try {
+            val moshi = Moshi.Builder()
+                .add(KotlinJsonAdapterFactory())
+                .build()
+
+            val listType = Types.newParameterizedType(List::class.java, Student::class.java)
+            val adapter: JsonAdapter<List<Student>> = moshi.adapter(listType)
+
+            adapter.fromJson(listData) ?: emptyList()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    LazyColumn(
         modifier = Modifier
             .padding(vertical = 4.dp)
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing),
         horizontalAlignment = Alignment.CenterHorizontally
     ){
-        OnBackgroundItemText(text = listData)
+        if (studentList.isEmpty()) {
+            item {
+                OnBackgroundItemText(text = "No data received.")
+            }
+        } else {
+            items(studentList) { student ->
+                OnBackgroundItemText(text = student.name)
+            }
+        }
     }
 }
 
